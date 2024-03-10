@@ -11,31 +11,34 @@ extern char **environ;
 
 // КОМАНДЫ
 int ksh_cd(char **args);
-int ksh_help(char **args);
-int ksh_exit(char **args);
-int ksh_clr(char **args);
+int ksh_clr();
 int ksh_dir(char **args);
-int ksh_environ(char **args);
+int ksh_environ();
 int ksh_echo(char **args);
+int ksh_help(char **args);
+int ksh_pause();
+int ksh_quit();
 
 char *builtin_str[] = {
     "cd",
-    "help",
-    "exit",
     "clr",
     "dir",
     "environ",
-    "echo"
+    "echo",
+    "help",
+    "pause",
+    "quit"
 };
 
 int (*builtin_func[]) (char**) = {
         &ksh_cd,
-        &ksh_help,
-        &ksh_exit,
         &ksh_clr,
         &ksh_dir,
         &ksh_environ,
-        &ksh_echo
+        &ksh_echo,
+        &ksh_help,
+        &ksh_pause,
+        &ksh_quit
 };
 
 int ksh_num_builtins() {
@@ -61,19 +64,7 @@ int ksh_cd(char **args) {
     return 1;
 }
 
-int ksh_help(char **args) {
-    printf("list of available commands:\n");
-    for (int i = 0; i < ksh_num_builtins();i++) {
-        printf(" %s\n", builtin_str[i]);
-    }
-    return 1;
-}
-
-int ksh_exit(char **args) {
-    return 0;
-}
-
-int ksh_clr(char **args) {
+int ksh_clr() {
     printf("\033c");
     return 1;
 }
@@ -99,7 +90,7 @@ int ksh_dir(char **args) {
     return 1;
 }
 
-int ksh_environ(char **args) {
+int ksh_environ() {
     char **env = environ;
     while (*env != NULL) {
         printf("%s\n", *env);
@@ -122,6 +113,24 @@ int ksh_echo(char **args) {
         printf("\n");
     }
     return 1;
+}
+
+int ksh_help(char **args) {
+    printf("List of available commands:\n");
+    for (int i = 0; i < ksh_num_builtins();i++) {
+        printf(" %s\n", builtin_str[i]);
+    }
+    return 1;
+}
+
+int ksh_pause() {
+    printf("Press <Enter> to continue...");
+    while (getchar() != '\n');
+    return 1;
+}
+
+int ksh_quit() {
+    return 0;
 }
 
 // КОМАНДЫ
@@ -157,6 +166,8 @@ int ksh_execute(char **args) {
             return (*builtin_func[i])(args);
         }
     }
+
+    //fprintf(stderr, "ksh: command not found: %s\n", args[0]);
 
     return ksh_launch(args);
 }
@@ -217,6 +228,9 @@ void ksh_loop() {
 }
 
 int main(int argc, char **argv) {
+    char buf[PATH_MAX];
+    realpath(argv[0], buf);
+    setenv("shell", buf, 1);
 
     ksh_loop(); // запуск команд
 
