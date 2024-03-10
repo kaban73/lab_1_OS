@@ -79,7 +79,7 @@ int ksh_dir(char **args) {
         dir = opendir(args[1]);
         if (dir == NULL) {
             perror("opendir");
-            fprintf(stderr, "Error: Unable to open directory %s\n", args[1]);
+            fprintf(stderr, "Error: unable to open directory %s\n", args[1]);
         } else {
             while ((entry = readdir(dir)) != NULL) {
                 printf("%s\n", entry->d_name);
@@ -143,7 +143,7 @@ int ksh_launch(char **args) {
     pid = fork(); // системный вызов
     if (pid == 0) { // child
         if (execvp(args[0], args) == -1) {
-            perror("ksh");
+            fprintf(stderr, "ksh: command not found: %s\n", args[0]);
         }
         exit(EXIT_FAILURE);
     } else if(pid < 0) { // error
@@ -166,8 +166,6 @@ int ksh_execute(char **args) {
             return (*builtin_func[i])(args);
         }
     }
-
-    //fprintf(stderr, "ksh: command not found: %s\n", args[0]);
 
     return ksh_launch(args);
 }
