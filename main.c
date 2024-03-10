@@ -1,24 +1,4 @@
-#include <sys/wait.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <dirent.h>
-
-#define LSH_TOK_BUFSIZE 64 // максимальный размер буфера
-#define LSH_TOK_DELIM " \t\r\n\a" // разделители, по которым будет разбиваться строка
-extern char **environ; // указатель на переменные окружения
-
-// КОМАНДЫ
-// объявление функций команд
-int ksh_cd(char **args);
-int ksh_clr();
-int ksh_dir(char **args);
-int ksh_environ();
-int ksh_echo(char **args);
-int ksh_help(char **args);
-int ksh_pause();
-int ksh_quit();
+#include "main.h"
 
 char *builtin_str[] = { // массив команд оболочки
         "cd",
@@ -144,8 +124,6 @@ int ksh_pause() { // функция паузы которая входит в б
 int ksh_quit() { // выход из оболочки, завершение процесса
     return 0;
 }
-
-// КОМАНДЫ
 
 // запуск процесса
 int ksh_launch(char **args) { // в этой функции запускается новый процесс , который обрабатывает ошибки и дожидается завершения дочерних процессов
