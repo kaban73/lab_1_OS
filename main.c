@@ -20,14 +20,25 @@ int ksh_pause();
 int ksh_quit();
 
 char *builtin_str[] = {
-    "cd",
-    "clr",
-    "dir",
-    "environ",
-    "echo",
-    "help",
-    "pause",
-    "quit"
+        "cd",
+        "clr",
+        "dir",
+        "environ",
+        "echo",
+        "help",
+        "pause",
+        "quit"
+};
+
+char *description_comm[] = {
+        "cd <directory> - change the current default directory to <directory>. If the <directory> argument is missing, print the current directory.",
+        "clr - clearing the screen.",
+        "dir <directory> - displays the contents of the <directory> directory.",
+        "environ - output of all environment variables.",
+        "echo <comment> - output to the <comment> screen, after which the transition to a new line is performed.",
+        "help - output of the user's guide.",
+        "pause - suspends shell operations until the <Enter> key is pressed.",
+        "quit - exit the shell."
 };
 
 int (*builtin_func[]) (char**) = {
@@ -118,7 +129,7 @@ int ksh_echo(char **args) {
 int ksh_help(char **args) {
     printf("List of available commands:\n");
     for (int i = 0; i < ksh_num_builtins();i++) {
-        printf(" %s\n", builtin_str[i]);
+        printf(" %s\n", description_comm[i]);
     }
     return 1;
 }
