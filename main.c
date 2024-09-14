@@ -37,6 +37,7 @@ int ksh_num_builtins() { // функция выводящая количеств
     return sizeof(builtin_str) / sizeof (char*);
 }
 
+
 int ksh_cd(char **args) { // функция для перемещения в другую директорию
     if (args[1] == NULL) { // если директория не указана, то выводится путь текущей директории
         char *current_dir = getcwd(NULL, 0); // получение пути к текущему рабочему каталогу
@@ -215,13 +216,46 @@ void ksh_loop() {
     } while (status);
 }
 
+char *ksh_read_line_from_file(FILE *file) {
+    char *line = NULL;
+    size_t bufsize = 0;
+    if (getline(&line, &bufsize, file) == -1) {
+        free(line); // Освободить память, если это последний вызов
+        return NULL; // Возвращаем NULL, когда достигнут конец файла
+    }
+    return line; // Возвращаем считанную строку
+}
+
+void ksh_loop_from_file(FILE *file) {
+    char *line; // строка, считанная из файла
+    char **args; // аргументы строки, считанной из файла
+    int status; // статус выполнения команды
+    while ((line = ksh_read_line_from_file(file)) != NULL) {
+        args = ksh_split_line(line); // разбить строку на аргументы
+        status = ksh_execute(args); // выполнить аргументы и изменить статус
+        free(line); // освободить память
+        free(args);
+        if (status == 0) break; // Если команда "quit", выйти
+    }
+}
+
 // начало программы
 int main(int argc, char **argv) {
     char buf[PATH_MAX]; // массив для пути к исполняемому файлу
     realpath(argv[0], buf); // сохранение полного пути к файлу в buf
     setenv("shell", buf, 1); // установка переменно окружения "shell" со значением buf
 
-    ksh_loop(); // запуск команд
+    if (argc > 1) { // Если аргумент передан
+        FILE *file = fopen(argv[1], "r");
+        if (!file) { // Проверка на ошибку открытия файла
+            perror("Error opening file");
+            return EXIT_FAILURE;
+        }
+        ksh_loop_from_file(file); // Запуск цикла для обработки команд из файла
+        fclose(file); // Закрытие файла после завершения
+    } else {
+        ksh_loop(); // Запуск команд в интерактивном режиме
+    }
 
     return EXIT_SUCCESS;
 }
