@@ -183,10 +183,11 @@ int ksh_launch(char **args, int background, char *input_file, char *output_file,
             }
         }
 
-        if (execvp(args[0], args) == -1) { // замена текущего процесса дочерним
-            fprintf(stderr, "ksh: command not found: %s\n", args[0]);
+        // Важно, чтобы мы проверили, что execvp не может быть выполнен
+        if (execvp(args[0], args) == -1) {
+            perror("ksh");
         }
-        exit(EXIT_FAILURE);
+        exit(EXIT_FAILURE); // Выход из дочернего процесса
     } else if (pid < 0) {
         perror("ksh");
     } else {
@@ -199,12 +200,12 @@ int ksh_launch(char **args, int background, char *input_file, char *output_file,
     return 1;
 }
 
-int ksh_execute(char **args) { // выполнение аргументов
+int ksh_execute(char **args) {
     if (args[0] == NULL) { // пустая команда
         return 1;
     }
 
-    // Обработка перенаправления входного потока
+    // Обработка перенаправления входного/выходного потока
     char *input_file = NULL;
     char *output_file = NULL;
     int append = 0; // флаг для append
@@ -231,7 +232,7 @@ int ksh_execute(char **args) { // выполнение аргументов
     }
     if (last_arg_index >= 0 && strcmp(args[last_arg_index], "&") == 0) {
         background = 1;
-        args[last_arg_index] = NULL;
+        args[last_arg_index] = NULL; // удаляем символ для фонового выполнения
     }
 
     for (int i = 0; i < ksh_num_builtins(); i++) {
@@ -244,6 +245,7 @@ int ksh_execute(char **args) { // выполнение аргументов
     // Запуск внешней программы с учетом перенаправления
     return ksh_launch(args, background, input_file, output_file, append);
 }
+
 
 char **ksh_split_line(char *line) { // разбиение строки на аргументы
     int bufsize = LSH_TOK_BUFSIZE; // задание начального размера буфера для хранения токенов
