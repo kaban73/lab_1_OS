@@ -22,7 +22,7 @@ char *description_comm[] = { // массив с командами оболоч�
         "quit - exit the shell."
 };
 
-int (*builtin_func[]) (char**) = { // массив указателей на функции команд
+int (*builtin_func[]) (char**, char*, char*, int) = { // массив указателей на функции команд
         &ksh_cd,
         &ksh_clr,
         &ksh_dir,
@@ -38,7 +38,7 @@ int ksh_num_builtins() { // функция выводящая количеств
 }
 
 
-int ksh_cd(char **args) { // функция для перемещения в другую директорию
+int ksh_cd(char **args, char *input_file, char *output_file, int append) { // функция для перемещения в другую директорию
     if (args[1] == NULL) { // если директория не указана, то выводится путь текущей директории
         char *current_dir = getcwd(NULL, 0); // получение пути к текущему рабочему каталогу
         if (current_dir) { // если все удачно - выводим путь, иначе ошибку
@@ -62,59 +62,98 @@ int ksh_clr() { // функция очистки содержимого конс
     return 1;
 }
 
-int ksh_dir(char **args) { // функция вывода содержимого указанной директории
+int ksh_dir(char **args, char *input_file, char *output_file, int append) {
     if (args[1] == NULL) { // если после dir отсутствует путь к директории
         fprintf(stderr, "Usage: dir <directory>\n");
     } else {
         DIR *dir;
-        struct dirent *entry; // указатели необходимые для работы с директориями
+        struct dirent *entry;
 
-        dir = opendir(args[1]); // попытка открыть директорию
-        if (dir == NULL) { // неудачная попытка открыть директорию
+        dir = opendir(args[1]); // Попытка открыть директорию
+        if (dir == NULL) { // Неудачная попытка
             perror("opendir");
             fprintf(stderr, "Error: unable to open directory %s\n", args[1]);
-        } else { // удачная
-            while ((entry = readdir(dir)) != NULL) { // проход по каждому элементу директории и его вывод в консоль
-                printf("%s\n", entry->d_name);
+        } else {
+            FILE *output_stream = stdout; // Используем stdout по умолчанию
+            if (output_file) {
+                output_stream = (append) ? fopen(output_file, "a") : fopen(output_file, "w");
             }
-            closedir(dir); // закрытие директории
+
+            // Вывод содержимого директории
+            while ((entry = readdir(dir)) != NULL) {
+                fprintf(output_stream, "%s\n", entry->d_name);
+            }
+            closedir(dir); // Закрытие директории
+            if (output_file) fclose(output_stream); // Закрываем файл, если он был открыт
         }
     }
     return 1;
 }
 
-int ksh_environ() { // эта функция выводит в коносль все переменные окружения в оболочке командной строки
+
+int ksh_environ(char **args, char *input_file, char *output_file, int append) {
+    FILE *output_stream = stdout; // Используем stdout по умолчанию
+    if (output_file) {
+        output_stream = (append) ? fopen(output_file, "a") : fopen(output_file, "w");
+    }
+
+    // Вывод всех переменных окружения
     char **env = environ;
     while (*env != NULL) {
-        printf("%s\n", *env);
+        fprintf(output_stream, "%s\n", *env);
         env++;
     }
+
+    if (output_file) fclose(output_stream); // Закрываем файл, если он был открыт
     return 1;
 }
 
-int ksh_echo(char **args) { // функция предназначена для вывода комментария в консоль
-    if (args[1] == NULL) {  // если комментарий был пустым, то просто выводит пустую строку
-        printf("\n");
-    } else { // иначе выводит каждый аргумент комментария через пробел
-        int i;
-        for (i = 1; args[i] != NULL; i++) {
-            printf("%s", args[i]);
+
+// Для встроенных команд вам понадобится изменить их сигнатуры, например:
+int ksh_echo(char **args, char *input_file, char *output_file, int append) {
+    FILE *output_stream = stdout; // используем stdout по умолчанию
+    if (output_file) {
+        if (append) {
+            output_stream = fopen(output_file, "a");
+        } else {
+            output_stream = fopen(output_file, "w");
+        }
+    }
+
+    if (args[1] == NULL) {
+        fprintf(output_stream, "\n");
+    } else {
+        for (int i = 1; args[i] != NULL; i++) {
+            fprintf(output_stream, "%s", args[i]);
             if (args[i + 1] != NULL) {
-                printf(" ");
+                fprintf(output_stream, " ");
             }
         }
-        printf("\n");
+        fprintf(output_stream, "\n");
+    }
+
+    if (output_file) {
+        fclose(output_stream); // Закрываем файл, если он был открыт
     }
     return 1;
 }
 
-int ksh_help(char **args) { // функция выводящая массив со списком команд и их описания
-    printf("List of available commands:\n");
-    for (int i = 0; i < ksh_num_builtins();i++) {
-        printf(" %s\n", description_comm[i]);
+int ksh_help(char **args, char *input_file, char *output_file, int append) {
+    FILE *output_stream = stdout; // Используем stdout по умолчанию
+    if (output_file) {
+        output_stream = (append) ? fopen(output_file, "a") : fopen(output_file, "w");
     }
+
+    // Вывод списка доступных команд
+    fprintf(output_stream, "List of available commands:\n");
+    for (int i = 0; i < ksh_num_builtins(); i++) {
+        fprintf(output_stream, " %s\n", description_comm[i]);
+    }
+
+    if (output_file) fclose(output_stream); // Закрываем файл, если он был открыт
     return 1;
 }
+
 
 int ksh_pause() { // функция паузы которая входит в бесконечный цикл, пока не будет нажат <Enter>
     printf("Press <Enter> to continue...");
@@ -127,22 +166,32 @@ int ksh_quit() { // выход из оболочки, завершение пр�
 }
 
 // запуск процесса
-
-int ksh_launch(char **args, int background) { // добавляем параметр background
-    pid_t pid, wpid; // переменные, необходимые для идентификации процессов
+int ksh_launch(char **args, int background, char *input_file, char *output_file, int append) {
+    pid_t pid, wpid;
     int status;
-    pid = fork(); // системный вызов, создание нового процесса
+    pid = fork();
+
     if (pid == 0) { // дочерний процесс
+        if (input_file) {
+            freopen(input_file, "r", stdin); // перенаправление stdin
+        }
+        if (output_file) {
+            if (append) {
+                freopen(output_file, "a", stdout); // перенаправление stdout (дозапись)
+            } else {
+                freopen(output_file, "w", stdout); // перенаправление stdout (перезапись)
+            }
+        }
+
         if (execvp(args[0], args) == -1) { // замена текущего процесса дочерним
             fprintf(stderr, "ksh: command not found: %s\n", args[0]);
         }
         exit(EXIT_FAILURE);
-    } else if (pid < 0) { // ошибка в создании нового процесса
+    } else if (pid < 0) {
         perror("ksh");
-    } else { // Выполнение родительского процесса
-        // Если это не фоновый процесс, ожидаем завершения
+    } else {
         if (!background) {
-            do { // родительский процесс ожидает завершения дочернего процесса
+            do {
                 wpid = waitpid(pid, &status, WUNTRACED);
             } while (!WIFEXITED(status) && !WIFSIGNALED(status));
         }
@@ -150,32 +199,50 @@ int ksh_launch(char **args, int background) { // добавляем параме
     return 1;
 }
 
-
 int ksh_execute(char **args) { // выполнение аргументов
     if (args[0] == NULL) { // пустая команда
         return 1;
     }
-    // Проверка на наличие фонового выполнения
-    int background = 0; // Переменная для хранения состояния фона
-    int last_arg_index = -1;
-    // Найдем индекс последнего аргумента
+
+    // Обработка перенаправления входного потока
+    char *input_file = NULL;
+    char *output_file = NULL;
+    int append = 0; // флаг для append
+
     for (int i = 0; args[i] != NULL; i++) {
-        last_arg_index = i;
-    }
-    // Если последний аргумент - амперсанд, убираем его и устанавливаем флаг
-    if (last_arg_index >= 0 && strcmp(args[last_arg_index], "&") == 0) {
-        background = 1;
-        args[last_arg_index] = NULL; // Убираем амперсанд из аргумент списка
-    }
-    for (int i = 0; i < ksh_num_builtins(); i++) { // перебор всех доступных команд
-        if (strcmp(args[0], builtin_str[i]) == 0) { // сравнение аргумента с командой из списка
-            return (*builtin_func[i])(args); // если аргумент и команда совпали, то вызывается определенная функция
+        if (strcmp(args[i], "<") == 0) {
+            input_file = args[i + 1]; // файл для ввода
+            args[i] = NULL; // удаляем символ
+        } else if (strcmp(args[i], ">") == 0) {
+            output_file = args[i + 1]; // файл для вывода
+            args[i] = NULL; // удаляем символ
+        } else if (strcmp(args[i], ">>") == 0) {
+            output_file = args[i + 1]; // файл для вывода
+            args[i] = NULL; // удаляем символ
+            append = 1; // устанавливаем флаг для append
         }
     }
 
-    // Теперь вызываем ksh_launch с указанием, является ли процесс фоновым
-    return ksh_launch(args, background);
+    // Проверка на наличие фонового выполнения
+    int background = 0;
+    int last_arg_index = -1;
+    for (int i = 0; args[i] != NULL; i++) {
+        last_arg_index = i;
+    }
+    if (last_arg_index >= 0 && strcmp(args[last_arg_index], "&") == 0) {
+        background = 1;
+        args[last_arg_index] = NULL;
+    }
 
+    for (int i = 0; i < ksh_num_builtins(); i++) {
+        if (strcmp(args[0], builtin_str[i]) == 0) {
+            // Если это встроенная команда, перенаправление также должно работать
+            return (*builtin_func[i])(args, input_file, output_file, append);
+        }
+    }
+
+    // Запуск внешней программы с учетом перенаправления
+    return ksh_launch(args, background, input_file, output_file, append);
 }
 
 char **ksh_split_line(char *line) { // разбиение строки на аргументы

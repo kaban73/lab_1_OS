@@ -10,11 +10,11 @@
 extern char **environ; // указатель на переменные окружения
 
 // объявление функций команд
-int ksh_cd(char **args);
+int ksh_cd(char **args, char *input_file, char *output_file, int append);
 int ksh_clr();
-int ksh_dir(char **args);
+int ksh_dir(char **args, char *input_file, char *output_file, int append);
 int ksh_environ();
-int ksh_echo(char **args);
-int ksh_help(char **args);
+int ksh_echo(char **args, char *input_file, char *output_file, int append);
+int ksh_help(char **args, char *input_file, char *output_file, int append);
 int ksh_pause();
 int ksh_quit();
